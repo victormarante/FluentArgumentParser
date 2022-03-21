@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+
 using ModernRonin.FluentArgumentParser.Definition;
 using ModernRonin.FluentArgumentParser.Help;
 
@@ -26,7 +28,7 @@ public class HelpAndErrorInterpreter : IHelpAndErrorInterpreter
         {
             IsResultOfInvalidInput = true,
             Text = HelpFor(call, configuration) +
-                   Environment.NewLine          +
+                   Environment.NewLine +
                    argumentErrors
         };
     }
@@ -39,6 +41,7 @@ public class HelpAndErrorInterpreter : IHelpAndErrorInterpreter
         if (call.Verb == default)
         {
             if (call.UnknownVerb == default) return new HelpResult { Text = _helpMaker.GenerateFor(parser) };
+
             return new HelpResult
             {
                 IsResultOfInvalidInput = true,
@@ -54,11 +57,32 @@ public class HelpAndErrorInterpreter : IHelpAndErrorInterpreter
                 IsResultOfInvalidInput = true,
                 Text =
                     HelpFor(call, parser.Configuration) +
-                    Environment.NewLine                 +
+                    Environment.NewLine +
                     $"Unknown verb '{call.UnknownVerb}'"
             };
         }
 
         return new HelpResult { Text = HelpFor(call, parser.Configuration) };
+    }
+
+    private static int CalculateLevenstheinDistance(string source, string target)
+    {
+        var sourceLength = source.Length;
+        var targetLength = target.Length;
+
+        if (targetLength == 0) return sourceLength;
+        if (sourceLength == 0) return targetLength;
+
+        if (source.First() == target.First())
+        {
+            return CalculateLevenstheinDistance(source.Substring(1), target.Substring(1));
+        }
+
+        return new[]
+        {
+            CalculateLevenstheinDistance(source[1..], target),
+            CalculateLevenstheinDistance(source, target[1..]),
+            CalculateLevenstheinDistance(source[1..], target[1..]),
+        }.Min() + 1;
     }
 }

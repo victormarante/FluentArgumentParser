@@ -41,12 +41,10 @@ public class HelpAndErrorInterpreter : IHelpAndErrorInterpreter
         if (call.Verb == default)
         {
             if (call.UnknownVerb == default) return new HelpResult { Text = _helpMaker.GenerateFor(parser) };
-
             return new HelpResult
             {
                 IsResultOfInvalidInput = true,
-                Text = _helpMaker.GenerateFor(parser) + Environment.NewLine +
-                       $"Unknown verb '{call.UnknownVerb}'"
+                Text = _helpMaker.GenerateFor(parser) + Environment.NewLine + createSuggestionText(),
             };
         }
 
@@ -55,27 +53,54 @@ public class HelpAndErrorInterpreter : IHelpAndErrorInterpreter
             return new HelpResult
             {
                 IsResultOfInvalidInput = true,
-                Text =
-                    HelpFor(call, parser.Configuration) +
-                    Environment.NewLine +
-                    $"Unknown verb '{call.UnknownVerb}'"
+                Text = HelpFor(call, parser.Configuration) + Environment.NewLine + createSuggestionText(),
             };
+        }
+
+        string createSuggestionText()
+        {
+            var suggesstions = GetVerbSuggestions(call.UnknownVerb, parser.Verbs.Select(x => x.Name).ToArray());
+            if (!suggesstions.Any())
+            {
+                return $"Unknown verb '{call.UnknownVerb}'";
+            }
+
+            return $"Unknown verb '{call.UnknownVerb}'. Did you mean: {string.Join(", ", suggesstions)}";
         }
 
         return new HelpResult { Text = HelpFor(call, parser.Configuration) };
     }
 
-    private static int CalculateLevenstheinDistance(string source, string target)
+    /// <summary>
+    ///     <para>
+    ///     GetVerbSuggestions calculates similar verb suggestions based on user input
+    ///     </para>
+    ///     Levensthein distance algorithm is used to determine to number of edits required to match a known verb.
+    ///     If only 3 or less edits are required, it is considered a good guess as to what the user intended to type.
+    /// </summary>
+    private List<string> GetVerbSuggestions(string unknownVerb, string[] knownVerbs)
     {
-        var sourceLength = source.Length;
-        var targetLength = target.Length;
-
-        if (targetLength == 0) return sourceLength;
-        if (sourceLength == 0) return targetLength;
-
-        if (source.First() == target.First())
+        var suggestions = new List<string>();
+        foreach(var verb in knownVerbs)
         {
-            return CalculateLevenstheinDistance(source.Substring(1), target.Substring(1));
+            var distance = CalculateLevenstheinDistance(unknownVerb, verb);
+            if (distance <= 3) // TODO: How do we configure this?
+            {
+                suggestions.Add(verb);
+            }
+        }
+
+        return suggestions;
+    }
+
+    private int CalculateLevenstheinDistance(string source, string target)
+    {
+        if (target.Length == 0) return source.Length;
+        if (source.Length == 0) return target.Length;
+
+        if (source[0] == target[0])
+        {
+            return CalculateLevenstheinDistance(source[1..], source[1..]);
         }
 
         return new[]
